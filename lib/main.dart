@@ -5,6 +5,7 @@ import 'services/notification_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/historico_screen.dart';
 import 'screens/remedios_screen.dart';
+import 'screens/configuracoes_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,7 +15,9 @@ void main() async {
 
   // Agendar notificações para os remédios ativos
   final remedios = storage.carregarRemedios();
-  await NotificationService.agendarNotificacoesRemedios(remedios);
+  final notifSettings = storage.carregarNotificationSettings();
+  await NotificationService.agendarNotificacoesRemedios(remedios,
+      settings: notifSettings);
 
   runApp(AppRemedio(storage: storage));
 }
@@ -29,9 +32,37 @@ class AppRemedio extends StatelessWidget {
       title: 'Meu Remédio',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorSchemeSeed: const Color(0xFF7C4DFF),
+        colorSchemeSeed: const Color(0xFF44B4A6),
         useMaterial3: true,
         fontFamily: 'Roboto',
+        scaffoldBackgroundColor: const Color(0xFFF0EBE3),
+        cardTheme: CardThemeData(
+          color: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+        ),
+        navigationBarTheme: NavigationBarThemeData(
+          backgroundColor: Colors.white,
+          indicatorColor: const Color(0xFF44B4A6).withValues(alpha: 0.15),
+          labelTextStyle: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF44B4A6),
+              );
+            }
+            return TextStyle(fontSize: 12, color: Colors.grey[500]);
+          }),
+          iconTheme: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return const IconThemeData(color: Color(0xFF44B4A6));
+            }
+            return IconThemeData(color: Colors.grey[400]);
+          }),
+        ),
       ),
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
@@ -65,6 +96,7 @@ class _MainNavigationState extends State<MainNavigation> {
       HomeScreen(storage: widget.storage),
       HistoricoScreen(storage: widget.storage),
       RemediosScreen(storage: widget.storage),
+      ConfiguracoesScreen(storage: widget.storage),
     ];
   }
 
@@ -93,6 +125,11 @@ class _MainNavigationState extends State<MainNavigation> {
             icon: Icon(Icons.medication_outlined),
             selectedIcon: Icon(Icons.medication),
             label: 'Remédios',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.settings_outlined),
+            selectedIcon: Icon(Icons.settings),
+            label: 'Ajustes',
           ),
         ],
       ),

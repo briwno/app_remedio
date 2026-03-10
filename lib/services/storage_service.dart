@@ -2,11 +2,13 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/remedio.dart';
 import '../models/registro.dart';
+import '../models/notification_settings.dart';
 
 class StorageService {
   static const _remediosKey = 'remedios';
   static const _registrosKey = 'registros';
   static const _inicializadoKey = 'inicializado';
+  static const _notifSettingsKey = 'notification_settings';
 
   late SharedPreferences _prefs;
 
@@ -138,8 +140,19 @@ class StorageService {
         r.remedioId == remedioId && r.horarioPrevisto == horarioPrevisto);
   }
 
-  /// Retorna todas as datas que têm pelo menos um registro
-  Set<DateTime> diasComRegistro() {
-    return carregarRegistros().map((r) => r.data).toSet();
+  // --- Configurações de Notificação ---
+
+  NotificationSettings carregarNotificationSettings() {
+    final json = _prefs.getString(_notifSettingsKey);
+    if (json == null) return const NotificationSettings();
+    return NotificationSettings.fromJson(
+        jsonDecode(json) as Map<String, dynamic>);
+  }
+
+  Future<void> salvarNotificationSettings(NotificationSettings settings) async {
+    final json = jsonEncode(settings.toJson());
+    await _prefs.setString(_notifSettingsKey, json);
   }
 }
+  /// Retorna todas as datas que têm pelo menos um registro
+ 

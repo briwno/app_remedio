@@ -1,11 +1,33 @@
+import 'dart:developer' as dev;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tz;
 import '../models/remedio.dart';
+import '../models/notification_settings.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
+
+  static const _androidDetails = AndroidNotificationDetails(
+    'remedios_channel',
+    'Lembretes de Remédios',
+    channelDescription: 'Notificações para lembrar de tomar remédios',
+    importance: Importance.max,
+    priority: Priority.max,
+    playSound: true,
+    enableVibration: true,
+    enableLights: true,
+  );
+
+  static const _notificationDetails = NotificationDetails(
+    android: _androidDetails,
+    iOS: DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    ),
+  );
 
   static Future<void> init() async {
     tz.initializeTimeZones();
@@ -22,17 +44,19 @@ class NotificationService {
       iOS: iosSettings,
     );
 
-    await _plugin.initialize(settings);
+    await _plugin.initialize(settings: settings);
 
-    // Solicitar permissão no Android 13+
-    _plugin
+    final androidPlugin = _plugin
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.requestNotificationsPermission();
+            AndroidFlutterLocalNotificationsPlugin>();
+    await androidPlugin?.requestNotificationsPermission();
+    await androidPlugin?.requestExactAlarmsPermission();
   }
 
   static Future<void> agendarNotificacoesRemedios(
-      List<Remedio> remedios) async {
+      List<Remedio> remedios, {
+      NotificationSettings settings = const NotificationSettings(),
+  }) async {
     await _plugin.cancelAll();
 
     int notifId = 0;
@@ -44,56 +68,86 @@ class NotificationService {
         final hora = int.parse(partes[0]);
         final minuto = int.parse(partes[1]);
 
-        // Notificação "Em breve" - 15 min antes
-        await _agendarDiaria(
-          id: notifId++,
-          titulo: '⏰ ${remedio.nome} em breve',
-          corpo: 'Em 15 minutos é hora de tomar ${remedio.nome}',
-          hora: hora,
-          minuto: minuto - 15 < 0 ? minuto + 45 : minuto - 15,
-          horaAjuste: minuto - 15 < 0 ? hora - 1 : hora,
-        );
+        // Notificação "Em breve" - X min antes (configurável)
+        if (settings.lembreteAntes) {
+          final min = settings.minutosAntes;
+          int minAntes = minuto - min;
+          int horaAntes = hora;
+          while (minAntes < 0) {
+            minAntes += 60;
+            horaAntes -= 1;
+          }
+          await _agendarDiaria(
+            id: notifId++,
+            titulo: '⏰ ${remedio.nome} em breve',
+            corpo: 'Em $min minutos é hora de tomar ${remedio.nome}',
+            hora: horaAntes,
+            minuto: minAntes,
+          );
+        }
 
         // Notificação "Hora de tomar"
-        await _agendarDiaria(
-          id: notifId++,
-          titulo: '💊 Hora do ${remedio.nome}!',
-          corpo: 'Tome seu ${remedio.nome} agora'
-              '${remedio.dosagem != null ? ' - ${remedio.dosagem}' : ''}',
-          hora: hora,
-          minuto: minuto,
-        );
+        if (settings.lembreteNaHora) {
+          await _agendarDiaria(
+            id: notifId++,
+            titulo: '💊 Hora do ${remedio.nome}!',
+            corpo: 'Tome seu ${remedio.nome} agora'
+                '${remedio.dosagem != null ? ' - ${remedio.dosagem}' : ''}',
+            hora: hora,
+            minuto: minuto,
+          );
+        }
 
-        // Notificação "Esqueceu?" - 30 min depois
-        await _agendarDiaria(
-          id: notifId++,
-          titulo: '⚠️ Esqueceu o ${remedio.nome}?',
-          corpo:
-              'Já faz 30 minutos do horário de ${remedio.nome}. Não esqueça!',
-          hora: hora,
-          minuto: minuto + 30 >= 60 ? minuto - 30 : minuto + 30,
-          horaAjuste: minuto + 30 >= 60 ? hora + 1 : hora,
-        );
+        // Notificação "Esqueceu?" - X min depois (configurável)
+        if (settings.lembreteDepois) {
+          final min = settings.minutosDepois;
+          int minDepois = minuto + min;
+          int horaDepois = hora;
+          while (minDepois >= 60) {
+            minDepois -= 60;
+            horaDepois += 1;
+          }
+          await _agendarDiaria(
+            id: notifId++,
+            titulo: '⚠️ Esqueceu o ${remedio.nome}?',
+            corpo:
+                'Já faz $min minutos do horário de ${remedio.nome}. Não esqueça!',
+            hora: horaDepois,
+            minuto: minDepois,
+          );
+        }
       }
+    }
+
+    // Log de verificação
+    final pendentes = await _plugin.pendingNotificationRequests();
+    dev.log('NotificationService: ${pendentes.length} notificações agendadas');
+    for (final p in pendentes) {
+      dev.log('  → id=${p.id} title="${p.title}"');
     }
   }
 
   static Future<void> enviarNotificacaoTeste() async {
     await _plugin.show(
-      9999,
-      '🧪 Notificação de Teste',
-      'Sistema de notificações funcionando corretamente!',
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'remedios_channel',
-          'Lembretes de Remédios',
-          channelDescription: 'Notificações para lembrar de tomar remédios',
-          importance: Importance.high,
-          priority: Priority.high,
-          playSound: true,
-        ),
-        iOS: DarwinNotificationDetails(),
-      ),
+      id: 9999,
+      title: '🧪 Notificação de Teste',
+      body: 'Sistema de notificações funcionando corretamente!',
+      notificationDetails: _notificationDetails,
+    );
+  }
+
+  /// Agenda uma notificação para daqui a 5 segundos via AlarmManager.
+  /// Funciona mesmo se o app for fechado.
+  static Future<void> agendarNotificacaoEm5Segundos() async {
+    final agendado = tz.TZDateTime.now(tz.local).add(const Duration(seconds: 5));
+
+    await _plugin.zonedSchedule(
+      id: 9998,
+      title: '🔔 Teste agendado!',
+      body: 'Esta notificação foi agendada 5 segundos atrás. Funcionou!',
+      scheduledDate: agendado,
+      notificationDetails: _notificationDetails,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
     );
   }
 
@@ -103,10 +157,9 @@ class NotificationService {
     required String corpo,
     required int hora,
     required int minuto,
-    int? horaAjuste,
   }) async {
-    final horaFinal = (horaAjuste ?? hora) % 24;
-    final minutoFinal = minuto < 0 ? minuto + 60 : minuto % 60;
+    final horaFinal = hora % 24;
+    final minutoFinal = minuto % 60;
 
     final agora = tz.TZDateTime.now(tz.local);
     var agendado = tz.TZDateTime(
@@ -122,25 +175,15 @@ class NotificationService {
       agendado = agendado.add(const Duration(days: 1));
     }
 
+    dev.log('Agendando "$titulo" para $agendado (id=$id)');
+
     await _plugin.zonedSchedule(
-      id,
-      titulo,
-      corpo,
-      agendado,
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'remedios_channel',
-          'Lembretes de Remédios',
-          channelDescription: 'Notificações para lembrar de tomar remédios',
-          importance: Importance.high,
-          priority: Priority.high,
-          playSound: true,
-        ),
-        iOS: DarwinNotificationDetails(),
-      ),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
+      id: id,
+      title: titulo,
+      body: corpo,
+      scheduledDate: agendado,
+      notificationDetails: _notificationDetails,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
     );
   }

@@ -15,6 +15,11 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
   late DateTime _mesSelecionado;
   DateTime? _diaSelecionado;
 
+  static const _teal = Color(0xFF44B4A6);
+  static const _accent = Color(0xFF9C7CDB);
+  static const _warmBg = Color(0xFFF0EBE3);
+  static const _darkText = Color(0xFF2D2D2D);
+
   @override
   void initState() {
     super.initState();
@@ -32,7 +37,6 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
     });
   }
 
-  /// Retorna o status de um dia: 'completo', 'parcial', 'nenhum', 'sem_dados'
   String _statusDoDia(DateTime dia) {
     final remedios = widget.storage
         .carregarRemedios()
@@ -58,33 +62,24 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F0FF),
+      backgroundColor: _warmBg,
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
             child: Container(
-              padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF7C4DFF), Color(0xFFB388FF)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.vertical(
-                  bottom: Radius.circular(30),
-                ),
-              ),
+              padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    '📊 Histórico',
+                    'Histórico',
                     style: TextStyle(
-                      fontSize: 24,
+                      fontSize: 32,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: _darkText,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   _buildLegenda(),
                 ],
               ),
@@ -92,14 +87,14 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: _buildCalendario(),
             ),
           ),
           if (_diaSelecionado != null)
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: _buildDetalhesDia(_diaSelecionado!),
               ),
             ),
@@ -111,13 +106,13 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
 
   Widget _buildLegenda() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.start,
       children: [
         _legendaItem(Colors.green, 'Tudo tomado'),
         const SizedBox(width: 16),
-        _legendaItem(Colors.orange, 'Parcial'),
+        _legendaItem(_accent, 'Parcial'),
         const SizedBox(width: 16),
-        _legendaItem(Colors.red, 'Nenhum'),
+        _legendaItem(const Color(0xFFE57373), 'Nenhum'),
       ],
     );
   }
@@ -126,13 +121,13 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
     return Row(
       children: [
         Container(
-          width: 12,
-          height: 12,
+          width: 10,
+          height: 10,
           decoration: BoxDecoration(color: cor, shape: BoxShape.circle),
         ),
-        const SizedBox(width: 4),
+        const SizedBox(width: 6),
         Text(texto,
-            style: const TextStyle(color: Colors.white, fontSize: 12)),
+            style: TextStyle(color: Colors.grey[600], fontSize: 12)),
       ],
     );
   }
@@ -143,14 +138,22 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
     final ultimoDia =
         DateTime(_mesSelecionado.year, _mesSelecionado.month + 1, 0);
     final diasNoMes = ultimoDia.day;
-    // segunda = 1, domingo = 7; ajustar para começar na segunda
     final diaDaSemanaInicio = (primeiroDia.weekday - 1) % 7;
     final agora = DateTime.now();
     final hoje = DateTime(agora.year, agora.month, agora.day);
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -160,7 +163,8 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.chevron_left),
+                  icon: const Icon(Icons.chevron_left_rounded),
+                  color: _darkText,
                   onPressed: () => _mudarMes(-1),
                 ),
                 Text(
@@ -168,11 +172,12 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF4A148C),
+                    color: _darkText,
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.chevron_right),
+                  icon: const Icon(Icons.chevron_right_rounded),
+                  color: _darkText,
                   onPressed: _mesSelecionado.month >= agora.month &&
                           _mesSelecionado.year >= agora.year
                       ? null
@@ -189,8 +194,8 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
                           child: Text(d,
                               style: TextStyle(
                                   fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.grey[600])),
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey[500])),
                         ),
                       ))
                   .toList(),
@@ -207,7 +212,7 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
                       final diaIndex =
                           semana * 7 + diaSemana - diaDaSemanaInicio + 1;
                       if (diaIndex < 1 || diaIndex > diasNoMes) {
-                        return const Expanded(child: SizedBox(height: 40));
+                        return const Expanded(child: SizedBox(height: 42));
                       }
 
                       final dia = DateTime(
@@ -220,34 +225,38 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
                           _diaSelecionado!.year == dia.year &&
                           _diaSelecionado!.month == dia.month &&
                           _diaSelecionado!.day == dia.day;
+                      final ehHoje = dia.year == hoje.year &&
+                          dia.month == hoje.month &&
+                          dia.day == hoje.day;
                       final status = ehFuturo ? 'sem_dados' : _statusDoDia(dia);
 
                       Color? bgColor;
                       if (status == 'completo') {
                         bgColor = Colors.green;
                       } else if (status == 'parcial') {
-                        bgColor = Colors.orange;
+                        bgColor = _accent;
                       } else if (status == 'nenhum') {
-                        bgColor = Colors.red;
+                        bgColor = const Color(0xFFE57373);
                       }
 
                       return Expanded(
                         child: GestureDetector(
                           onTap: ehFuturo
                               ? null
-                              : () =>
-                                  setState(() => _diaSelecionado = dia),
+                              : () => setState(() => _diaSelecionado = dia),
                           child: Container(
-                            height: 40,
+                            height: 42,
                             margin: const EdgeInsets.all(2),
                             decoration: BoxDecoration(
-                              color: bgColor?.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(8),
+                              color: ehSelecionado
+                                  ? _teal.withValues(alpha: 0.15)
+                                  : bgColor?.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(12),
                               border: ehSelecionado
-                                  ? Border.all(
-                                      color: const Color(0xFF7C4DFF),
-                                      width: 2)
-                                  : null,
+                                  ? Border.all(color: _teal, width: 2)
+                                  : ehHoje
+                                      ? Border.all(color: _accent, width: 1.5)
+                                      : null,
                             ),
                             child: Center(
                               child: Column(
@@ -257,12 +266,12 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
                                     '$diaIndex',
                                     style: TextStyle(
                                       fontSize: 14,
-                                      fontWeight: ehSelecionado
+                                      fontWeight: ehSelecionado || ehHoje
                                           ? FontWeight.bold
                                           : FontWeight.normal,
                                       color: ehFuturo
-                                          ? Colors.grey[400]
-                                          : Colors.black87,
+                                          ? Colors.grey[350]
+                                          : _darkText,
                                     ),
                                   ),
                                   if (bgColor != null)
@@ -296,9 +305,18 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
     final registros = widget.storage.registrosDoDia(dia);
     final dataFormatada = DateFormat('d MMMM yyyy', 'pt_BR').format(dia);
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -309,17 +327,17 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF4A148C),
+                color: _darkText,
               ),
             ),
-            const Divider(),
+            Divider(color: Colors.grey[200]),
             if (registros.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(16),
+              Padding(
+                padding: const EdgeInsets.all(16),
                 child: Center(
                   child: Text(
                     'Nenhum remédio registrado neste dia',
-                    style: TextStyle(color: Colors.grey),
+                    style: TextStyle(color: Colors.grey[500]),
                   ),
                 ),
               )
@@ -345,11 +363,11 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          const Icon(Icons.medication, size: 20, color: Color(0xFF7C4DFF)),
+          const Icon(Icons.medication_rounded, size: 20, color: _teal),
           const SizedBox(width: 8),
           Expanded(
             child: Text(remedio.nome,
-                style: const TextStyle(fontWeight: FontWeight.w500)),
+                style: const TextStyle(fontWeight: FontWeight.w500, color: _darkText)),
           ),
           ...remedio.horarios.map((h) {
             final tomado = widget.storage.foiTomado(remedio.id, dia, h);
@@ -358,8 +376,8 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: tomado
-                    ? Colors.green.withValues(alpha: 0.2)
-                    : Colors.red.withValues(alpha: 0.2),
+                    ? _teal.withValues(alpha: 0.15)
+                    : const Color(0xFFE57373).withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -368,7 +386,7 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
                   Icon(
                     tomado ? Icons.check : Icons.close,
                     size: 14,
-                    color: tomado ? Colors.green : Colors.red,
+                    color: tomado ? _teal : const Color(0xFFE57373),
                   ),
                   const SizedBox(width: 4),
                   Text(h, style: const TextStyle(fontSize: 12)),
@@ -386,17 +404,17 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          const Icon(Icons.medical_services,
-              size: 20, color: Colors.orange),
+          const Icon(Icons.medical_services_rounded,
+              size: 20, color: _accent),
           const SizedBox(width: 8),
           Expanded(
             child: Text(remedio.nome,
-                style: const TextStyle(fontWeight: FontWeight.w500)),
+                style: const TextStyle(fontWeight: FontWeight.w500, color: _darkText)),
           ),
           Text(
             '${registros.length}x',
             style: const TextStyle(
-                fontWeight: FontWeight.bold, color: Colors.orange),
+                fontWeight: FontWeight.bold, color: _accent),
           ),
         ],
       ),

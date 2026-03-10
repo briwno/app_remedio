@@ -14,6 +14,11 @@ class RemediosScreen extends StatefulWidget {
 class _RemediosScreenState extends State<RemediosScreen> {
   late List<Remedio> _remedios;
 
+  static const _teal = Color(0xFF44B4A6);
+  static const _accent = Color(0xFF9C7CDB);
+  static const _warmBg = Color(0xFFF0EBE3);
+  static const _darkText = Color(0xFF2D2D2D);
+
   @override
   void initState() {
     super.initState();
@@ -24,8 +29,8 @@ class _RemediosScreenState extends State<RemediosScreen> {
     setState(() {
       _remedios = widget.storage.carregarRemedios();
     });
-    // Reagendar notificações
-    NotificationService.agendarNotificacoesRemedios(_remedios);
+    final settings = widget.storage.carregarNotificationSettings();
+    NotificationService.agendarNotificacoesRemedios(_remedios, settings: settings);
   }
 
   Future<void> _adicionarRemedio() async {
@@ -54,6 +59,7 @@ class _RemediosScreenState extends State<RemediosScreen> {
     final confirmado = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Remover Remédio'),
         content: Text('Deseja remover "${remedio.nome}" e todo seu histórico?'),
         actions: [
@@ -63,7 +69,7 @@ class _RemediosScreenState extends State<RemediosScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: Colors.red[400]),
             child: const Text('Remover'),
           ),
         ],
@@ -78,29 +84,19 @@ class _RemediosScreenState extends State<RemediosScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F0FF),
+      backgroundColor: _warmBg,
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
             child: Container(
-              padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF7C4DFF), Color(0xFFB388FF)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.vertical(
-                  bottom: Radius.circular(30),
-                ),
-              ),
+              padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
               child: const Text(
-                '⚙️ Meus Remédios',
-                textAlign: TextAlign.center,
+                'Meus\nRemédios',
                 style: TextStyle(
-                  fontSize: 24,
+                  fontSize: 32,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: _darkText,
+                  height: 1.15,
                 ),
               ),
             ),
@@ -110,36 +106,42 @@ class _RemediosScreenState extends State<RemediosScreen> {
               (context, index) {
                 final remedio = _remedios[index];
                 return Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: Card(
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
                     child: ListTile(
                       contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 8),
                       leading: Container(
-                        padding: const EdgeInsets.all(8),
+                        padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
                           color: remedio.diario
-                              ? const Color(0xFFE8DEF8)
-                              : const Color(0xFFFFF3E0),
-                          borderRadius: BorderRadius.circular(12),
+                              ? _teal.withValues(alpha: 0.1)
+                              : _accent.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(14),
                         ),
                         child: Icon(
                           remedio.diario
-                              ? Icons.medication
-                              : Icons.medical_services,
-                          color: remedio.diario
-                              ? const Color(0xFF7C4DFF)
-                              : Colors.orange,
+                              ? Icons.medication_rounded
+                              : Icons.medical_services_rounded,
+                          color: remedio.diario ? _teal : _accent,
                         ),
                       ),
                       title: Text(
                         remedio.nome,
                         style: TextStyle(
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w600,
+                          color: _darkText,
                           decoration:
                               remedio.ativo ? null : TextDecoration.lineThrough,
                         ),
@@ -148,14 +150,14 @@ class _RemediosScreenState extends State<RemediosScreen> {
                         remedio.diario
                             ? 'Diário - ${remedio.horarios.join(", ")}'
                             : 'Quando precisar',
-                        style: TextStyle(color: Colors.grey[600]),
+                        style: TextStyle(color: Colors.grey[500]),
                       ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Switch(
                             value: remedio.ativo,
-                            activeColor: const Color(0xFF7C4DFF),
+                            activeThumbColor: _teal,
                             onChanged: (v) async {
                               await widget.storage.atualizarRemedio(
                                   remedio.copyWith(ativo: v));
@@ -163,26 +165,28 @@ class _RemediosScreenState extends State<RemediosScreen> {
                             },
                           ),
                           PopupMenuButton(
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14)),
                             itemBuilder: (ctx) => [
                               const PopupMenuItem(
                                 value: 'editar',
                                 child: Row(
                                   children: [
-                                    Icon(Icons.edit, size: 18),
+                                    Icon(Icons.edit_rounded, size: 18),
                                     SizedBox(width: 8),
                                     Text('Editar'),
                                   ],
                                 ),
                               ),
-                              const PopupMenuItem(
+                              PopupMenuItem(
                                 value: 'remover',
                                 child: Row(
                                   children: [
-                                    Icon(Icons.delete,
-                                        size: 18, color: Colors.red),
-                                    SizedBox(width: 8),
+                                    Icon(Icons.delete_rounded,
+                                        size: 18, color: Colors.red[400]),
+                                    const SizedBox(width: 8),
                                     Text('Remover',
-                                        style: TextStyle(color: Colors.red)),
+                                        style: TextStyle(color: Colors.red[400])),
                                   ],
                                 ),
                               ),
@@ -206,10 +210,11 @@ class _RemediosScreenState extends State<RemediosScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _adicionarRemedio,
-        backgroundColor: const Color(0xFF7C4DFF),
+        backgroundColor: _teal,
         foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
+        icon: const Icon(Icons.add_rounded),
         label: const Text('Novo Remédio'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     );
   }
@@ -230,6 +235,8 @@ class _RemedioDialogState extends State<_RemedioDialog> {
   late TextEditingController _dosagemCtrl;
   late bool _diario;
   late List<String> _horarios;
+
+  static const _teal = Color(0xFF44B4A6);
 
   @override
   void initState() {
@@ -267,6 +274,7 @@ class _RemedioDialogState extends State<_RemedioDialog> {
     final editando = widget.remedio != null;
 
     return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Text(editando ? 'Editar Remédio' : 'Novo Remédio'),
       content: SingleChildScrollView(
         child: Column(
@@ -275,17 +283,29 @@ class _RemedioDialogState extends State<_RemedioDialog> {
           children: [
             TextField(
               controller: _nomeCtrl,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Nome do remédio',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: _teal, width: 2),
+                ),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _dosagemCtrl,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Dosagem (opcional)',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: _teal, width: 2),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -293,7 +313,7 @@ class _RemedioDialogState extends State<_RemedioDialog> {
               title: const Text('Tomar todo dia'),
               subtitle: Text(_diario ? 'Com horários fixos' : 'Só quando precisar'),
               value: _diario,
-              activeColor: const Color(0xFF7C4DFF),
+              activeThumbColor: _teal,
               onChanged: (v) => setState(() => _diario = v),
               contentPadding: EdgeInsets.zero,
             ),
@@ -309,10 +329,16 @@ class _RemedioDialogState extends State<_RemedioDialog> {
                         label: Text(h),
                         onDeleted: () =>
                             setState(() => _horarios.remove(h)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       )),
                   ActionChip(
                     label: const Icon(Icons.add, size: 18),
                     onPressed: _adicionarHorario,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ],
               ),
@@ -341,7 +367,10 @@ class _RemedioDialogState extends State<_RemedioDialog> {
             Navigator.pop(context, remedio);
           },
           style: FilledButton.styleFrom(
-            backgroundColor: const Color(0xFF7C4DFF),
+            backgroundColor: _teal,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
           child: Text(editando ? 'Salvar' : 'Adicionar'),
         ),
