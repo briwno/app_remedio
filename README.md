@@ -1,16 +1,14 @@
-# app_remedio
+# Remédios da Nanay 💊
 
-A new Flutter project.
+Um app em **Flutter** com um banco de dados compartilhado para anotar os remédios da minha namorada.
 
-## Getting Started
+### 🚀 Sobre o projeto
+Este aplicativo foi desenvolvido focado no aprendizado prático de:
+* Criação e build de **APKs** em Flutter.
+* Configuração de ambiente nativo (Gradle, Android SDK).
+* Implementação de **notificações locais** agendadas.
+* Gerenciamento de banco de dados e persistência.
+* Sistema de atualização automática via GitHub.
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### 📝 Notas de aprendizado
+Projeto focado em entender como funciona o ecossistema mobile, desde a configuração das variáveis de ambiente no Windows até a distribuição do app final.
