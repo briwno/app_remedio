@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'dart:developer' as dev;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/remedio.dart';
 import '../models/registro.dart';
 import '../models/notification_settings.dart';
+import 'database_service.dart';
 
 class StorageService {
   static const _remediosKey = 'remedios';
@@ -14,9 +16,81 @@ class StorageService {
 
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
-    if (!(_prefs.getBool(_inicializadoKey) ?? false)) {
+
+    // Conectar ao banco de dados online
+    await DatabaseService.init();
+
+    if (DatabaseService.isConnected) {
+      await _sincronizarComBanco();
+    } else if (!(_prefs.getBool(_inicializadoKey) ?? false)) {
       await _criarRemediosPadrao();
       await _prefs.setBool(_inicializadoKey, true);
+    }
+  }
+
+  /// Sincroniza dados entre o banco online e o cache local.
+  /// Se o banco tem dados, usa eles (fonte da verdade).
+  /// Se o banco está vazio e tem dados locais, envia para o banco.
+  Future<void> _sincronizarComBanco() async {
+    try {
+      // --- Remédios ---
+      final remediosDb = await DatabaseService.carregarRemedios();
+      final remediosLocal = carregarRemedios();
+
+      if (remediosDb.isNotEmpty) {
+        // Banco tem dados → atualiza cache local
+        await _salvarRemediosLocal(remediosDb);
+        dev.log('Sync: ${remediosDb.length} remédios baixados do banco');
+      } else if (remediosLocal.isNotEmpty) {
+        // Banco vazio, local tem dados → envia para o banco
+        for (final r in remediosLocal) {
+          await DatabaseService.salvarRemedio(r);
+        }
+        dev.log('Sync: ${remediosLocal.length} remédios enviados ao banco');
+      } else {
+        // Ambos vazios → criar padrão e salvar em ambos
+        await _criarRemediosPadrao();
+        final padrao = carregarRemedios();
+        for (final r in padrao) {
+          await DatabaseService.salvarRemedio(r);
+        }
+      }
+
+      // --- Registros ---
+      final registrosDb = await DatabaseService.carregarRegistros();
+      final registrosLocal = carregarRegistros();
+
+      if (registrosDb.isNotEmpty) {
+        await _salvarRegistrosLocal(registrosDb);
+        dev.log('Sync: ${registrosDb.length} registros baixados do banco');
+      } else if (registrosLocal.isNotEmpty) {
+        for (final r in registrosLocal) {
+          await DatabaseService.adicionarRegistro(r);
+        }
+        dev.log('Sync: ${registrosLocal.length} registros enviados ao banco');
+      }
+
+      // --- Notification Settings ---
+      final settingsDb = await DatabaseService.carregarNotificationSettings();
+      final settingsLocal = carregarNotificationSettings();
+      final defaultSettings = const NotificationSettings();
+
+      // Se o banco tem configuração personalizada, usa ela
+      if (settingsDb.minutosAntes != defaultSettings.minutosAntes ||
+          settingsDb.minutosDepois != defaultSettings.minutosDepois ||
+          settingsDb.lembreteAntes != defaultSettings.lembreteAntes ||
+          settingsDb.lembreteNaHora != defaultSettings.lembreteNaHora ||
+          settingsDb.lembreteDepois != defaultSettings.lembreteDepois) {
+        await _salvarNotificationSettingsLocal(settingsDb);
+      } else if (settingsLocal.minutosAntes != defaultSettings.minutosAntes ||
+          settingsLocal.minutosDepois != defaultSettings.minutosDepois) {
+        await DatabaseService.salvarNotificationSettings(settingsLocal);
+      }
+
+      await _prefs.setBool(_inicializadoKey, true);
+      dev.log('Sync: sincronização concluída');
+    } catch (e) {
+      dev.log('Sync: erro na sincronização: $e');
     }
   }
 
@@ -42,10 +116,12 @@ class StorageService {
         diario: false,
       ),
     ];
-    await salvarRemedios(remediosPadrao);
+    await _salvarRemediosLocal(remediosPadrao);
   }
 
-  // --- Remédios ---
+  // ==========================================
+  // Remédios
+  // ==========================================
 
   List<Remedio> carregarRemedios() {
     final json = _prefs.getString(_remediosKey);
@@ -56,15 +132,27 @@ class StorageService {
         .toList();
   }
 
-  Future<void> salvarRemedios(List<Remedio> remedios) async {
+  Future<void> _salvarRemediosLocal(List<Remedio> remedios) async {
     final json = jsonEncode(remedios.map((e) => e.toJson()).toList());
     await _prefs.setString(_remediosKey, json);
+  }
+
+  Future<void> salvarRemedios(List<Remedio> remedios) async {
+    await _salvarRemediosLocal(remedios);
+    if (DatabaseService.isConnected) {
+      for (final r in remedios) {
+        await DatabaseService.salvarRemedio(r);
+      }
+    }
   }
 
   Future<void> adicionarRemedio(Remedio remedio) async {
     final lista = carregarRemedios();
     lista.add(remedio);
-    await salvarRemedios(lista);
+    await _salvarRemediosLocal(lista);
+    if (DatabaseService.isConnected) {
+      await DatabaseService.salvarRemedio(remedio);
+    }
   }
 
   Future<void> atualizarRemedio(Remedio remedio) async {
@@ -72,21 +160,30 @@ class StorageService {
     final index = lista.indexWhere((r) => r.id == remedio.id);
     if (index >= 0) {
       lista[index] = remedio;
-      await salvarRemedios(lista);
+      await _salvarRemediosLocal(lista);
+      if (DatabaseService.isConnected) {
+        await DatabaseService.salvarRemedio(remedio);
+      }
     }
   }
 
   Future<void> removerRemedio(String id) async {
     final lista = carregarRemedios();
     lista.removeWhere((r) => r.id == id);
-    await salvarRemedios(lista);
-    // Remover registros associados
+    await _salvarRemediosLocal(lista);
+
     final registros = carregarRegistros();
     registros.removeWhere((r) => r.remedioId == id);
-    await _salvarRegistros(registros);
+    await _salvarRegistrosLocal(registros);
+
+    if (DatabaseService.isConnected) {
+      await DatabaseService.removerRemedio(id);
+    }
   }
 
-  // --- Registros ---
+  // ==========================================
+  // Registros
+  // ==========================================
 
   List<Registro> carregarRegistros() {
     final json = _prefs.getString(_registrosKey);
@@ -97,7 +194,7 @@ class StorageService {
         .toList();
   }
 
-  Future<void> _salvarRegistros(List<Registro> registros) async {
+  Future<void> _salvarRegistrosLocal(List<Registro> registros) async {
     final json = jsonEncode(registros.map((e) => e.toJson()).toList());
     await _prefs.setString(_registrosKey, json);
   }
@@ -105,42 +202,50 @@ class StorageService {
   Future<void> registrarTomado(Registro registro) async {
     final lista = carregarRegistros();
     lista.add(registro);
-    await _salvarRegistros(lista);
+    await _salvarRegistrosLocal(lista);
+    if (DatabaseService.isConnected) {
+      await DatabaseService.adicionarRegistro(registro);
+    }
   }
 
-  Future<void> removerRegistro(String remedioId, DateTime data,
-      String? horarioPrevisto) async {
+  Future<void> removerRegistro(
+      String remedioId, DateTime data, String? horarioPrevisto) async {
     final lista = carregarRegistros();
     lista.removeWhere((r) =>
         r.remedioId == remedioId &&
         r.data == DateTime(data.year, data.month, data.day) &&
         r.horarioPrevisto == horarioPrevisto);
-    await _salvarRegistros(lista);
+    await _salvarRegistrosLocal(lista);
+    if (DatabaseService.isConnected) {
+      await DatabaseService.removerRegistro(remedioId, data, horarioPrevisto);
+    }
   }
 
-  /// Remove um registro específico baseado no objeto completo
   Future<void> removerRegistroEspecifico(Registro registro) async {
     final lista = carregarRegistros();
     lista.removeWhere((r) =>
         r.remedioId == registro.remedioId &&
         r.dataHora.isAtSameMomentAs(registro.dataHora));
-    await _salvarRegistros(lista);
+    await _salvarRegistrosLocal(lista);
+    if (DatabaseService.isConnected) {
+      await DatabaseService.removerRegistroEspecifico(registro);
+    }
   }
 
-  /// Registros de um dia específico
   List<Registro> registrosDoDia(DateTime dia) {
     final diaLimpo = DateTime(dia.year, dia.month, dia.day);
     return carregarRegistros().where((r) => r.data == diaLimpo).toList();
   }
 
-  /// Verifica se um remédio+horário foi tomado em um dia
   bool foiTomado(String remedioId, DateTime dia, String? horarioPrevisto) {
     final registros = registrosDoDia(dia);
     return registros.any((r) =>
         r.remedioId == remedioId && r.horarioPrevisto == horarioPrevisto);
   }
 
-  // --- Configurações de Notificação ---
+  // ==========================================
+  // Configurações de Notificação
+  // ==========================================
 
   NotificationSettings carregarNotificationSettings() {
     final json = _prefs.getString(_notifSettingsKey);
@@ -149,10 +254,17 @@ class StorageService {
         jsonDecode(json) as Map<String, dynamic>);
   }
 
-  Future<void> salvarNotificationSettings(NotificationSettings settings) async {
+  Future<void> _salvarNotificationSettingsLocal(
+      NotificationSettings settings) async {
     final json = jsonEncode(settings.toJson());
     await _prefs.setString(_notifSettingsKey, json);
   }
+
+  Future<void> salvarNotificationSettings(
+      NotificationSettings settings) async {
+    await _salvarNotificationSettingsLocal(settings);
+    if (DatabaseService.isConnected) {
+      await DatabaseService.salvarNotificationSettings(settings);
+    }
+  }
 }
-  /// Retorna todas as datas que têm pelo menos um registro
- 

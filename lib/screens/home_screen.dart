@@ -3,7 +3,6 @@ import 'package:intl/intl.dart';
 import '../models/remedio.dart';
 import '../models/registro.dart';
 import '../services/storage_service.dart';
-import '../services/notification_service.dart';
 
 class HomeScreen extends StatefulWidget {
   final StorageService storage;

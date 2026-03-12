@@ -1,5 +1,6 @@
 import 'dart:developer' as dev;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tz;
 import '../models/remedio.dart';
@@ -31,6 +32,9 @@ class NotificationService {
 
   static Future<void> init() async {
     tz.initializeTimeZones();
+    final timeZoneName = await FlutterTimezone.getLocalTimezone();
+    tz.setLocalLocation(tz.getLocation(timeZoneName));
+    dev.log('NotificationService: timezone = $timeZoneName');
 
     const androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -90,7 +94,7 @@ class NotificationService {
         if (settings.lembreteNaHora) {
           await _agendarDiaria(
             id: notifId++,
-            titulo: '💊 Hora do ${remedio.nome}!',
+            titulo: '💊 REMEDIUUUUUUUUUUUUUUUUUU - ${remedio.nome}!',
             corpo: 'Tome seu ${remedio.nome} agora'
                 '${remedio.dosagem != null ? ' - ${remedio.dosagem}' : ''}',
             hora: hora,

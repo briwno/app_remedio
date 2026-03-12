@@ -344,9 +344,12 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(titulo),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: opcoes.map((min) {
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: opcoes.map((min) {
             final selecionado = min == valorAtual;
             return ListTile(
               shape: RoundedRectangleBorder(
@@ -369,6 +372,8 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
               onTap: () => Navigator.pop(ctx, min),
             );
           }).toList(),
+            ),
+          ),
         ),
       ),
     );

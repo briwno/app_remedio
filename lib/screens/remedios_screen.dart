@@ -258,6 +258,15 @@ class _RemedioDialogState extends State<_RemedioDialog> {
     final time = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.now(),
+      initialEntryMode: TimePickerEntryMode.input,
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: const TextScaler.linear(1.0),
+          ),
+          child: child!,
+        );
+      },
     );
     if (time != null) {
       setState(() {
@@ -276,10 +285,12 @@ class _RemedioDialogState extends State<_RemedioDialog> {
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Text(editando ? 'Editar Remédio' : 'Novo Remédio'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+      content: SizedBox(
+        width: double.maxFinite,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             TextField(
               controller: _nomeCtrl,
@@ -344,6 +355,7 @@ class _RemedioDialogState extends State<_RemedioDialog> {
               ),
             ],
           ],
+          ),
         ),
       ),
       actions: [
