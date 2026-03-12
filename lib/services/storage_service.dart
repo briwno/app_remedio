@@ -1,12 +1,13 @@
 import 'dart:convert';
 import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/remedio.dart';
 import '../models/registro.dart';
 import '../models/notification_settings.dart';
 import 'database_service.dart';
 
-class StorageService {
+class StorageService extends ChangeNotifier {
   static const _remediosKey = 'remedios';
   static const _registrosKey = 'registros';
   static const _inicializadoKey = 'inicializado';
@@ -139,6 +140,7 @@ class StorageService {
 
   Future<void> salvarRemedios(List<Remedio> remedios) async {
     await _salvarRemediosLocal(remedios);
+    notifyListeners();
     if (DatabaseService.isConnected) {
       for (final r in remedios) {
         await DatabaseService.salvarRemedio(r);
@@ -150,6 +152,7 @@ class StorageService {
     final lista = carregarRemedios();
     lista.add(remedio);
     await _salvarRemediosLocal(lista);
+    notifyListeners();
     if (DatabaseService.isConnected) {
       await DatabaseService.salvarRemedio(remedio);
     }
@@ -161,6 +164,7 @@ class StorageService {
     if (index >= 0) {
       lista[index] = remedio;
       await _salvarRemediosLocal(lista);
+      notifyListeners();
       if (DatabaseService.isConnected) {
         await DatabaseService.salvarRemedio(remedio);
       }
@@ -176,6 +180,7 @@ class StorageService {
     registros.removeWhere((r) => r.remedioId == id);
     await _salvarRegistrosLocal(registros);
 
+    notifyListeners();
     if (DatabaseService.isConnected) {
       await DatabaseService.removerRemedio(id);
     }
@@ -203,6 +208,7 @@ class StorageService {
     final lista = carregarRegistros();
     lista.add(registro);
     await _salvarRegistrosLocal(lista);
+    notifyListeners();
     if (DatabaseService.isConnected) {
       await DatabaseService.adicionarRegistro(registro);
     }
@@ -219,6 +225,7 @@ class StorageService {
     if (DatabaseService.isConnected) {
       await DatabaseService.removerRegistro(remedioId, data, horarioPrevisto);
     }
+    notifyListeners();
   }
 
   Future<void> removerRegistroEspecifico(Registro registro) async {
@@ -230,6 +237,7 @@ class StorageService {
     if (DatabaseService.isConnected) {
       await DatabaseService.removerRegistroEspecifico(registro);
     }
+    notifyListeners();
   }
 
   List<Registro> registrosDoDia(DateTime dia) {
@@ -263,6 +271,7 @@ class StorageService {
   Future<void> salvarNotificationSettings(
       NotificationSettings settings) async {
     await _salvarNotificationSettingsLocal(settings);
+    notifyListeners();
     if (DatabaseService.isConnected) {
       await DatabaseService.salvarNotificationSettings(settings);
     }

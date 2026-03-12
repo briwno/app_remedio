@@ -23,6 +23,21 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
   void initState() {
     super.initState();
     _settings = widget.storage.carregarNotificationSettings();
+    widget.storage.addListener(_onDataChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.storage.removeListener(_onDataChanged);
+    super.dispose();
+  }
+
+  void _onDataChanged() {
+    if (mounted) {
+      setState(() {
+        _settings = widget.storage.carregarNotificationSettings();
+      });
+    }
   }
 
   Future<void> _salvar(NotificationSettings novoSettings) async {

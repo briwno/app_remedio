@@ -35,6 +35,21 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _remedios = widget.storage.carregarRemedios();
+    widget.storage.addListener(_onDataChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.storage.removeListener(_onDataChanged);
+    super.dispose();
+  }
+
+  void _onDataChanged() {
+    if (mounted) {
+      setState(() {
+        _remedios = widget.storage.carregarRemedios();
+      });
+    }
   }
 
   void _atualizarRemedios() {

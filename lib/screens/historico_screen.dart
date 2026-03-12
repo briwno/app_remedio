@@ -25,6 +25,17 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
     super.initState();
     final agora = DateTime.now();
     _mesSelecionado = DateTime(agora.year, agora.month);
+    widget.storage.addListener(_onDataChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.storage.removeListener(_onDataChanged);
+    super.dispose();
+  }
+
+  void _onDataChanged() {
+    if (mounted) setState(() {});
   }
 
   void _mudarMes(int delta) {
