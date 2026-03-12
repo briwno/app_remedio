@@ -58,7 +58,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
             child: Container(
               padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
               child: const Text(
-                'Configurações',
+                'Configurações\nda Nanay',
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,

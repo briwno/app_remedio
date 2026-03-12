@@ -14,6 +14,9 @@ class StorageService extends ChangeNotifier {
   static const _notifSettingsKey = 'notification_settings';
 
   late SharedPreferences _prefs;
+  String _mensagemDoDia = '';
+
+  String get mensagemDoDia => _mensagemDoDia;
 
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
@@ -23,6 +26,7 @@ class StorageService extends ChangeNotifier {
 
     if (DatabaseService.isConnected) {
       await _sincronizarComBanco();
+      await atualizarMensagemDoDia();
     } else if (!(_prefs.getBool(_inicializadoKey) ?? false)) {
       await _criarRemediosPadrao();
       await _prefs.setBool(_inicializadoKey, true);
@@ -92,6 +96,14 @@ class StorageService extends ChangeNotifier {
       dev.log('Sync: sincronização concluída');
     } catch (e) {
       dev.log('Sync: erro na sincronização: $e');
+    }
+  }
+
+  Future<void> atualizarMensagemDoDia() async {
+    final msg = await DatabaseService.carregarMensagemDoDia();
+    if (msg != null && msg != _mensagemDoDia) {
+      _mensagemDoDia = msg;
+      notifyListeners();
     }
   }
 

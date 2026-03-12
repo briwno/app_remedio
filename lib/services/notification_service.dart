@@ -12,8 +12,8 @@ class NotificationService {
 
   static const _androidDetails = AndroidNotificationDetails(
     'remedios_channel',
-    'Lembretes de Remédios',
-    channelDescription: 'Notificações para lembrar de tomar remédios',
+    'Remédios da Nanay',
+    channelDescription: 'Lembretes de remédios da Nanay',
     importance: Importance.max,
     priority: Priority.max,
     playSound: true,
@@ -83,8 +83,8 @@ class NotificationService {
           }
           await _agendarDiaria(
             id: notifId++,
-            titulo: '⏰ ${remedio.nome} em breve',
-            corpo: 'Em $min minutos é hora de tomar ${remedio.nome}',
+            titulo: '⏰ Nanay, ${remedio.nome} em breve!',
+            corpo: 'Em $min minutos é hora de tomar ${remedio.nome} 💜',
             hora: horaAntes,
             minuto: minAntes,
           );
@@ -94,9 +94,9 @@ class NotificationService {
         if (settings.lembreteNaHora) {
           await _agendarDiaria(
             id: notifId++,
-            titulo: '💊 REMEDIUUUUUUUUUUUUUUUUUU - ${remedio.nome}!',
-            corpo: 'Tome seu ${remedio.nome} agora'
-                '${remedio.dosagem != null ? ' - ${remedio.dosagem}' : ''}',
+            titulo: '💊 Nanay, REMEDIUUUUUUUUUU - ${remedio.nome}!',
+            corpo: 'Nanay, tome seu ${remedio.nome} agora'
+                '${remedio.dosagem != null ? ' - ${remedio.dosagem}' : ''} 💜',
             hora: hora,
             minuto: minuto,
           );
@@ -113,9 +113,9 @@ class NotificationService {
           }
           await _agendarDiaria(
             id: notifId++,
-            titulo: '⚠️ Esqueceu o ${remedio.nome}?',
+            titulo: '⚠️ Nanay, esqueceu o ${remedio.nome}?',
             corpo:
-                'Já faz $min minutos do horário de ${remedio.nome}. Não esqueça!',
+                'Nanay, já faz $min minutos do horário de ${remedio.nome}. Não esqueça! 💜',
             hora: horaDepois,
             minuto: minDepois,
           );
@@ -134,8 +134,8 @@ class NotificationService {
   static Future<void> enviarNotificacaoTeste() async {
     await _plugin.show(
       id: 9999,
-      title: '🧪 Notificação de Teste',
-      body: 'Sistema de notificações funcionando corretamente!',
+      title: '🧪 Teste - Remédios da Nanay',
+      body: 'Nanay, as notificações estão funcionando! 💜',
       notificationDetails: _notificationDetails,
     );
   }

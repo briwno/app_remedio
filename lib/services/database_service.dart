@@ -1,5 +1,6 @@
 import 'dart:convert';
-import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:postgres/postgres.dart';
 import '../models/remedio.dart';
 import '../models/registro.dart';
@@ -8,6 +9,7 @@ import '../models/notification_settings.dart';
 class DatabaseService {
   static Connection? _connection;
   static bool _initialized = false;
+  static const int _maxRetries = 3;
 
   static bool get isConnected => _connection != null && _initialized;
 
@@ -18,33 +20,39 @@ class DatabaseService {
         await _connection!.execute('SELECT 1');
         return _connection;
       } catch (_) {
-        dev.log('DatabaseService: conexão perdida, reconectando...');
+        debugPrint('DatabaseService: conexão perdida, reconectando...');
         _connection = null;
       }
     }
 
-    // (Re)conectar
-    try {
-      _connection = await Connection.open(
-        Endpoint(
-          host: 'ep-rough-thunder-acwxd8af-pooler.sa-east-1.aws.neon.tech',
-          database: 'neondb',
-          username: 'neondb_owner',
-          password: 'npg_pz1uIxYENQ3M',
-        ),
-        settings: ConnectionSettings(
-          sslMode: SslMode.require,
-          connectTimeout: const Duration(seconds: 10),
-          queryTimeout: const Duration(seconds: 15),
-        ),
-      );
-      dev.log('DatabaseService: (re)conectado ao Neon PostgreSQL');
-      return _connection;
-    } catch (e) {
-      dev.log('DatabaseService: falha ao conectar: $e');
-      _connection = null;
-      return null;
+    // (Re)conectar com retries para redes móveis
+    for (int tentativa = 1; tentativa <= _maxRetries; tentativa++) {
+      try {
+        _connection = await Connection.open(
+          Endpoint(
+            host: dotenv.env['DB_HOST']!,
+            database: dotenv.env['DB_NAME']!,
+            username: dotenv.env['DB_USER']!,
+            password: dotenv.env['DB_PASSWORD']!,
+          ),
+          settings: ConnectionSettings(
+            sslMode: SslMode.require,
+            connectTimeout: const Duration(seconds: 20),
+            queryTimeout: const Duration(seconds: 20),
+          ),
+        );
+        debugPrint('DatabaseService: conectado ao Neon PostgreSQL (tentativa $tentativa)');
+        return _connection;
+      } catch (e) {
+        debugPrint('DatabaseService: falha tentativa $tentativa/$_maxRetries: $e');
+        _connection = null;
+        if (tentativa < _maxRetries) {
+          await Future.delayed(Duration(seconds: tentativa * 2));
+        }
+      }
     }
+    debugPrint('DatabaseService: todas as tentativas falharam');
+    return null;
   }
 
   /// Executa uma operação no banco com reconexão automática.
@@ -56,7 +64,7 @@ class DatabaseService {
       if (conn == null) return valorPadrao;
       return await operacao(conn);
     } catch (e) {
-      dev.log('DatabaseService: erro na query: $e');
+      debugPrint('DatabaseService: erro na query: $e');
       // Conexão pode ter sido invalidada, limpa para reconectar na próxima
       _connection = null;
       return valorPadrao;
@@ -69,9 +77,9 @@ class DatabaseService {
     try {
       await _criarTabelas(conn);
       _initialized = true;
-      dev.log('DatabaseService: tabelas criadas/verificadas');
+      debugPrint('DatabaseService: tabelas criadas/verificadas');
     } catch (e) {
-      dev.log('DatabaseService: erro ao criar tabelas: $e');
+      debugPrint('DatabaseService: erro ao criar tabelas: $e');
       _connection = null;
     }
   }
@@ -108,6 +116,32 @@ class DatabaseService {
         minutos_depois INTEGER DEFAULT 30
       )
     ''');
+
+    await conn.execute('''
+      CREATE TABLE IF NOT EXISTS mensagem_do_dia (
+        id INTEGER PRIMARY KEY DEFAULT 1,
+        mensagem TEXT NOT NULL DEFAULT 'Cuide-se bem, Nanay! 💜'
+      )
+    ''');
+
+    // Garante que existe uma linha padrão
+    await conn.execute('''
+      INSERT INTO mensagem_do_dia (id, mensagem)
+      VALUES (1, 'Cuide-se bem, Nanay! 💜')
+      ON CONFLICT (id) DO NOTHING
+    ''');
+  }
+
+  // --- Mensagem do Dia ---
+
+  static Future<String?> carregarMensagemDoDia() async {
+    return _executar<String?>(null, (conn) async {
+      final result = await conn.execute(
+        'SELECT mensagem FROM mensagem_do_dia WHERE id = 1',
+      );
+      if (result.isEmpty) return null;
+      return result.first.toColumnMap()['mensagem'] as String?;
+    });
   }
 
   // --- Remédios ---

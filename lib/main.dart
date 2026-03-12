@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'services/storage_service.dart';
 import 'services/notification_service.dart';
+import 'services/permission_service.dart';
+import 'services/update_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/historico_screen.dart';
 import 'screens/remedios_screen.dart';
@@ -9,6 +12,7 @@ import 'screens/configuracoes_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load();
   final storage = StorageService();
   await storage.init();
   await NotificationService.init();
@@ -29,7 +33,7 @@ class AppRemedio extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Meu Remédio',
+      title: 'Remédios da Nanay',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorSchemeSeed: const Color(0xFF44B4A6),
@@ -98,6 +102,11 @@ class _MainNavigationState extends State<MainNavigation> {
       RemediosScreen(storage: widget.storage),
       ConfiguracoesScreen(storage: widget.storage),
     ];
+    // Verifica permissões ao abrir o app
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      PermissionService.verificarEMostrarDialog(context);
+      UpdateService.verificarAtualizacao(context);
+    });
   }
 
   @override

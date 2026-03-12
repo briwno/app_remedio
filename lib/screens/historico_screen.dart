@@ -83,7 +83,7 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Histórico',
+                    'Histórico\nda Nanay',
                     style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,

@@ -106,7 +106,7 @@ class _RemediosScreenState extends State<RemediosScreen> {
             child: Container(
               padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
               child: const Text(
-                'Meus\nRemédios',
+                'Remédios\nda Nanay',
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,

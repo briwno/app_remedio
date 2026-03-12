@@ -56,6 +56,8 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _remedios = widget.storage.carregarRemedios();
     });
+    // Recarrega mensagem do dia do banco
+    widget.storage.atualizarMensagemDoDia();
   }
 
   void _irParaDia(int delta) {
@@ -247,16 +249,37 @@ class _HomeScreenState extends State<HomeScreen> {
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(20),
                             ),
-                            child: Text(
-                              _ehHoje
-                                  ? 'Hoje, ${DateFormat('d', 'pt_BR').format(_diaSelecionado)}'
-                                  : _dateFormat.format(_diaSelecionado),
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[600],
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
+                            child: _ehHoje
+                                ? Text.rich(
+                                    TextSpan(
+                                      children: [
+                                        TextSpan(
+                                          text: 'HOJE, ',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: _accent,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        TextSpan(
+                                          text: DateFormat('EEEE, d MMM yyyy', 'pt_BR').format(_diaSelecionado),
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.grey[600],
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : Text(
+                                    _dateFormat.format(_diaSelecionado),
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[600],
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
                           ),
                         ),
                         IconButton(
@@ -268,7 +291,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Cuidando da\nsua saúde',
+                      'Remédios\nda Nanay 💊',
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
@@ -276,6 +299,40 @@ class _HomeScreenState extends State<HomeScreen> {
                         height: 1.15,
                       ),
                     ),
+                    if (widget.storage.mensagemDoDia.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: _accent.withOpacity(0.15),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            const Text('💌', style: TextStyle(fontSize: 22)),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                widget.storage.mensagemDoDia,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[700],
+                                  fontStyle: FontStyle.italic,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 20),
                     _buildWeekStrip(),
                   ],
@@ -298,7 +355,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
                   child: Text(
-                    'Seu cronograma',
+                    'Cronograma da Nanay',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
