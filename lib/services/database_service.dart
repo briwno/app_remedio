@@ -210,7 +210,7 @@ class DatabaseService {
         final map = row.toColumnMap();
         return Registro(
           remedioId: map['remedio_id'] as String,
-          dataHora: (map['data_hora'] as DateTime),
+          dataHora: (map['data_hora'] as DateTime).toLocal(),
           horarioPrevisto: map['horario_previsto'] as String?,
         );
       }).toList();

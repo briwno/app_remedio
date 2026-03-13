@@ -17,10 +17,13 @@ class Registro {
 
   factory Registro.fromJson(Map<String, dynamic> json) => Registro(
         remedioId: json['remedioId'] as String,
-        dataHora: DateTime.parse(json['dataHora'] as String),
+        dataHora: DateTime.parse(json['dataHora'] as String).toLocal(),
         horarioPrevisto: json['horarioPrevisto'] as String?,
       );
 
   /// Retorna só a data (sem hora) para comparações
-  DateTime get data => DateTime(dataHora.year, dataHora.month, dataHora.day);
+  DateTime get data {
+    final local = dataHora.toLocal();
+    return DateTime(local.year, local.month, local.day);
+  }
 }
