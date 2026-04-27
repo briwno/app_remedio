@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../models/remedio.dart';
 import '../models/registro.dart';
 import '../services/storage_service.dart';
+import '../services/notification_service.dart';
 
 class HomeScreen extends StatefulWidget {
   final StorageService storage;
@@ -60,10 +61,16 @@ class _HomeScreenState extends State<HomeScreen> {
     widget.storage.atualizarMensagemDoDia();
   }
 
-  void _irParaDia(int delta) {
-    setState(() {
-      _diaSelecionado = _diaSelecionado.add(Duration(days: delta));
-    });
+  Future<void> _reagendarNotificacoesHoje() async {
+    final remedios = widget.storage.carregarRemedios();
+    final settings = widget.storage.carregarNotificationSettings();
+    final registrosHoje = widget.storage.registrosDoDia(DateTime.now());
+
+    await NotificationService.agendarNotificacoesRemedios(
+      remedios,
+      settings: settings,
+      registrosHoje: registrosHoje,
+    );
   }
 
   Future<void> _toggleRemedio(Remedio remedio, String? horario) async {
@@ -91,6 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
       );
       if (confirmar == true) {
         await widget.storage.removerRegistro(remedio.id, _diaLimpo, horario);
+        await _reagendarNotificacoesHoje();
         setState(() {});
       }
     } else {
@@ -99,6 +107,7 @@ class _HomeScreenState extends State<HomeScreen> {
         dataHora: DateTime.now(),
         horarioPrevisto: horario,
       ));
+      await _reagendarNotificacoesHoje();
       setState(() {});
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -308,7 +317,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: _accent.withOpacity(0.15),
+                              color: _accent.withValues(alpha: 0.15),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
@@ -428,8 +437,11 @@ class _HomeScreenState extends State<HomeScreen> {
           final status = _statusDoDia(diaLimpo);
           if (status == 'completo') {
             emoji = '✅';
-          } else if (status == 'parcial') emoji = '⚠️';
-          else if (status == 'nenhum') emoji = '❌';
+          } else if (status == 'parcial') {
+            emoji = '⚠️';
+          } else if (status == 'nenhum') {
+            emoji = '❌';
+          }
         }
 
         return GestureDetector(

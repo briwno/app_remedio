@@ -241,8 +241,8 @@ class _PermissionDialogState extends State<_PermissionDialog>
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: p.concedida
-                  ? _teal.withOpacity(0.1)
-                  : Colors.orange.withOpacity(0.1),
+                  ? _teal.withValues(alpha: 0.1)
+                  : Colors.orange.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(

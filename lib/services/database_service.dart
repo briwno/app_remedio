@@ -9,7 +9,10 @@ import '../models/notification_settings.dart';
 class DatabaseService {
   static Connection? _connection;
   static bool _initialized = false;
-  static const int _maxRetries = 3;
+  static const int _maxRetries = 2;
+  static const _healthCheckTimeout = Duration(seconds: 2);
+  static const _connectTimeout = Duration(seconds: 6);
+  static const _queryTimeout = Duration(seconds: 6);
 
   static bool get isConnected => _connection != null && _initialized;
 
@@ -17,7 +20,7 @@ class DatabaseService {
     // Tenta reusar conexão existente com um teste rápido
     if (_connection != null) {
       try {
-        await _connection!.execute('SELECT 1');
+        await _connection!.execute('SELECT 1').timeout(_healthCheckTimeout);
         return _connection;
       } catch (_) {
         debugPrint('DatabaseService: conexão perdida, reconectando...');
@@ -37,17 +40,17 @@ class DatabaseService {
           ),
           settings: ConnectionSettings(
             sslMode: SslMode.require,
-            connectTimeout: const Duration(seconds: 20),
-            queryTimeout: const Duration(seconds: 20),
+            connectTimeout: _connectTimeout,
+            queryTimeout: _queryTimeout,
           ),
-        );
+        ).timeout(_connectTimeout + const Duration(seconds: 2));
         debugPrint('DatabaseService: conectado ao Neon PostgreSQL (tentativa $tentativa)');
         return _connection;
       } catch (e) {
         debugPrint('DatabaseService: falha tentativa $tentativa/$_maxRetries: $e');
         _connection = null;
         if (tentativa < _maxRetries) {
-          await Future.delayed(Duration(seconds: tentativa * 2));
+          await Future.delayed(Duration(seconds: tentativa));
         }
       }
     }

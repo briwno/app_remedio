@@ -45,7 +45,12 @@ class _RemediosScreenState extends State<RemediosScreen> {
       _remedios = widget.storage.carregarRemedios();
     });
     final settings = widget.storage.carregarNotificationSettings();
-    NotificationService.agendarNotificacoesRemedios(_remedios, settings: settings);
+    final registrosHoje = widget.storage.registrosDoDia(DateTime.now());
+    NotificationService.agendarNotificacoesRemedios(
+      _remedios,
+      settings: settings,
+      registrosHoje: registrosHoje,
+    );
   }
 
   Future<void> _adicionarRemedio() async {

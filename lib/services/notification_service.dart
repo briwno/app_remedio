@@ -4,6 +4,7 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tz;
 import '../models/remedio.dart';
+import '../models/registro.dart';
 import '../models/notification_settings.dart';
 
 class NotificationService {
@@ -60,8 +61,16 @@ class NotificationService {
   static Future<void> agendarNotificacoesRemedios(
       List<Remedio> remedios, {
       NotificationSettings settings = const NotificationSettings(),
+      List<Registro> registrosHoje = const [],
   }) async {
     await _plugin.cancelAll();
+    final agora = DateTime.now();
+    final tomadasHojePorHorario = registrosHoje
+      .where((registro) =>
+        registro.horarioPrevisto != null &&
+        _mesmoDia(registro.dataHora, agora))
+      .map((registro) => '${registro.remedioId}|${registro.horarioPrevisto}')
+      .toSet();
 
     int notifId = 0;
     for (final remedio in remedios) {
@@ -71,6 +80,8 @@ class NotificationService {
         final partes = horario.split(':');
         final hora = int.parse(partes[0]);
         final minuto = int.parse(partes[1]);
+        final tomouHojeNoHorario =
+          tomadasHojePorHorario.contains('${remedio.id}|$horario');
 
         // Notificação "Em breve" - X min antes (configurável)
         if (settings.lembreteAntes) {
@@ -107,6 +118,13 @@ class NotificationService {
           final min = settings.minutosDepois;
           int minDepois = minuto + min;
           int horaDepois = hora;
+          var pularProximaOcorrencia = false;
+          if (tomouHojeNoHorario) {
+            final horarioEsqueceuHoje =
+                DateTime(agora.year, agora.month, agora.day, hora, minuto)
+                    .add(Duration(minutes: min));
+            pularProximaOcorrencia = agora.isBefore(horarioEsqueceuHoje);
+          }
           while (minDepois >= 60) {
             minDepois -= 60;
             horaDepois += 1;
@@ -118,6 +136,7 @@ class NotificationService {
                 'Nanay, já faz $min minutos do horário de ${remedio.nome}. Não esqueça! 💜',
             hora: horaDepois,
             minuto: minDepois,
+            pularProximaOcorrencia: pularProximaOcorrencia,
           );
         }
       }
@@ -161,6 +180,7 @@ class NotificationService {
     required String corpo,
     required int hora,
     required int minuto,
+    bool pularProximaOcorrencia = false,
   }) async {
     final horaFinal = hora % 24;
     final minutoFinal = minuto % 60;
@@ -179,6 +199,10 @@ class NotificationService {
       agendado = agendado.add(const Duration(days: 1));
     }
 
+    if (pularProximaOcorrencia) {
+      agendado = agendado.add(const Duration(days: 1));
+    }
+
     dev.log('Agendando "$titulo" para $agendado (id=$id)');
 
     await _plugin.zonedSchedule(
@@ -190,5 +214,13 @@ class NotificationService {
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
     );
+  }
+
+  static bool _mesmoDia(DateTime a, DateTime b) {
+    final localA = a.toLocal();
+    final localB = b.toLocal();
+    return localA.year == localB.year &&
+        localA.month == localB.month &&
+        localA.day == localB.day;
   }
 }

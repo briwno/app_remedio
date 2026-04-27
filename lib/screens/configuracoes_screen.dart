@@ -44,8 +44,10 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
     setState(() => _settings = novoSettings);
     await widget.storage.salvarNotificationSettings(novoSettings);
     final remedios = widget.storage.carregarRemedios();
+    final registrosHoje = widget.storage.registrosDoDia(DateTime.now());
     await NotificationService.agendarNotificacoesRemedios(remedios,
-        settings: novoSettings);
+      settings: novoSettings,
+      registrosHoje: registrosHoje);
   }
 
   @override

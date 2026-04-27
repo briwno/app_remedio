@@ -38,10 +38,21 @@ class StorageService extends ChangeNotifier {
   /// Se o banco está vazio e tem dados locais, envia para o banco.
   Future<void> _sincronizarComBanco() async {
     try {
-      // --- Remédios ---
-      final remediosDb = await DatabaseService.carregarRemedios();
       final remediosLocal = carregarRemedios();
+      final registrosLocal = carregarRegistros();
+      final settingsLocal = carregarNotificationSettings();
 
+      final resultados = await Future.wait<dynamic>([
+        DatabaseService.carregarRemedios(),
+        DatabaseService.carregarRegistros(),
+        DatabaseService.carregarNotificationSettings(),
+      ]);
+
+      final remediosDb = resultados[0] as List<Remedio>;
+      final registrosDb = resultados[1] as List<Registro>;
+      final settingsDb = resultados[2] as NotificationSettings;
+
+      // --- Remédios ---
       if (remediosDb.isNotEmpty) {
         // Banco tem dados → atualiza cache local
         await _salvarRemediosLocal(remediosDb);
@@ -62,9 +73,6 @@ class StorageService extends ChangeNotifier {
       }
 
       // --- Registros ---
-      final registrosDb = await DatabaseService.carregarRegistros();
-      final registrosLocal = carregarRegistros();
-
       if (registrosDb.isNotEmpty) {
         await _salvarRegistrosLocal(registrosDb);
         dev.log('Sync: ${registrosDb.length} registros baixados do banco');
@@ -76,8 +84,6 @@ class StorageService extends ChangeNotifier {
       }
 
       // --- Notification Settings ---
-      final settingsDb = await DatabaseService.carregarNotificationSettings();
-      final settingsLocal = carregarNotificationSettings();
       final defaultSettings = const NotificationSettings();
 
       // Se o banco tem configuração personalizada, usa ela

@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:developer' as dev;
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -12,18 +14,60 @@ import 'screens/configuracoes_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load();
-  final storage = StorageService();
-  await storage.init();
-  await NotificationService.init();
 
-  // Agendar notificações para os remédios ativos
-  final remedios = storage.carregarRemedios();
-  final notifSettings = storage.carregarNotificationSettings();
-  await NotificationService.agendarNotificacoesRemedios(remedios,
-      settings: notifSettings);
+  try {
+    await dotenv.load();
+  } catch (e, st) {
+    dev.log(
+      'main: erro ao carregar .env, seguindo com modo local',
+      error: e,
+      stackTrace: st,
+    );
+  }
+
+  final storage = StorageService();
+  try {
+    await storage.init().timeout(const Duration(seconds: 8));
+  } catch (e, st) {
+    dev.log(
+      'main: storage.init demorou/falhou, iniciando com cache local',
+      error: e,
+      stackTrace: st,
+    );
+  }
+
+  try {
+    await NotificationService.init().timeout(const Duration(seconds: 5));
+  } catch (e, st) {
+    dev.log(
+      'main: NotificationService.init falhou, app seguirá sem bloquear inicializacao',
+      error: e,
+      stackTrace: st,
+    );
+  }
 
   runApp(AppRemedio(storage: storage));
+  unawaited(_agendarNotificacoesIniciais(storage));
+}
+
+Future<void> _agendarNotificacoesIniciais(StorageService storage) async {
+  // Agenda após o app subir para reduzir o custo crítico de abertura.
+  final remedios = storage.carregarRemedios();
+  final notifSettings = storage.carregarNotificationSettings();
+  final registrosHoje = storage.registrosDoDia(DateTime.now());
+  try {
+    await NotificationService.agendarNotificacoesRemedios(
+      remedios,
+      settings: notifSettings,
+      registrosHoje: registrosHoje,
+    ).timeout(const Duration(seconds: 5));
+  } catch (e, st) {
+    dev.log(
+      'main: agendamento inicial de notificacoes falhou',
+      error: e,
+      stackTrace: st,
+    );
+  }
 }
 
 class AppRemedio extends StatelessWidget {
@@ -103,9 +147,14 @@ class _MainNavigationState extends State<MainNavigation> {
       ConfiguracoesScreen(storage: widget.storage),
     ];
     // Verifica permissões ao abrir o app
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      PermissionService.verificarEMostrarDialog(context);
-      UpdateService.verificarAtualizacao(context);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await PermissionService.verificarEMostrarDialog(context);
+      if (!mounted) return;
+
+      Future.delayed(const Duration(seconds: 3), () {
+        if (!mounted) return;
+        unawaited(UpdateService.verificarAtualizacao(context));
+      });
     });
   }
 
